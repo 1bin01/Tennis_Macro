@@ -118,8 +118,6 @@ def make_reservation(day, timeslot, court):
     
     Time = 6
     for item in time_items:
-        print(item.text, Time)
-        print(item.get_attribute("class"))
         if Time in timeslot:
             if "disabled" not in item.get_attribute("class"):
                 item.find_element(By.TAG_NAME, "button").click()
@@ -143,11 +141,11 @@ def make_reservation(day, timeslot, court):
     elif court == 2:
         l = 3
     
-    for t in range(100):
+    for t in range(10):
+        print(t)
         for i in range(r - 1, l - 1, -1):
             xpath = f'//div[@class="desc_title" and normalize-space(text())="{court_list[i]}"]/ancestor::a[@class="item_desc"]'
             elements = driver.find_elements(By.XPATH, xpath)
-            print(court_list[i], elements) 
             if elements:
                 WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable((By.XPATH, xpath))
@@ -178,10 +176,43 @@ def make_reservation(day, timeslot, court):
     return 1
 
 
+def run():
+    # 예약 가능한 코트 찾기
+    for date, timeslot, court in candidates:
+        driver.get("https://booking.naver.com/booking/10/bizes/210031")
+        
+        # 6. 캘린더로 이동
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "booking_select"))
+        ).click()
+
+        # 7. 달 맞추기
+        while True:
+            WebDriverWait(driver, 10).until(
+                EC.text_to_be_present_in_element((By.CLASS_NAME, "calendar_title"), ".")
+            )
+            current_month = int(WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "calendar_title"))
+            ).text.strip().split(".")[1])
+            
+            if(current_month == month) : break
+            
+            WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.CLASS_NAME, "btn_next"))
+            ).click()
+            print(f"현재 달은 {current_month}월입니다. 다음 달로 넘어갑니다.")
+            
+        print(f"현재 달력에서 달은 {current_month}입니다")
+        
+        # 8. 예약 시도
+        return make_reservation(date, timeslot, court)
+
+
+
 '''
 Todo
 1. python 설치 (3.13 기준)
-2. 컴퓨터에 selenium 설치 (터미널에에서 pip install selenium) 안해도 되나?
+2. 컴퓨터에 selenium 설치 (터미널에에서 명령어 입력 : pip install selenium)
 3. 네이버 로그인
 4. 화면에 따라 작동이 잘 안될 수도 있으니 꼭 테스트해보기
 '''
@@ -213,47 +244,11 @@ WebDriverWait(driver, 50).until(EC.url_changes("https://nid.naver.com/nidlogin.l
 driver.get("https://booking.naver.com/booking/10/bizes/210031")
 
 
-# 5. 정각까지 기다리기 (수정해야함)
-    # # 4. 9시까지 대기
-    # while True:
-    #     now = datetime.now()
-    #     if now.hour == 9 and now.minute == 0:
-    #         break
-    #     print(f"현재 시각: {now.strftime('%H:%M:%S')} - 9시까지 대기 중...")
-    #     time.sleep(1)
-
-
-# 예약 가능한 코트 찾기
-for date, timeslot, court in candidates:
-    driver.get("https://booking.naver.com/booking/10/bizes/210031")
-    
-    # 6. 캘린더로 이동
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CLASS_NAME, "booking_select"))
-    ).click()
-
-    # 7. 달 맞추기
-    while True:
-        WebDriverWait(driver, 10).until(
-            EC.text_to_be_present_in_element((By.CLASS_NAME, "calendar_title"), ".")
-        )
-        current_month = int(WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CLASS_NAME, "calendar_title"))
-        ).text.strip().split(".")[1])
-        
-        if(current_month == month) : break
-        
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CLASS_NAME, "btn_next"))
-        ).click()
-        print(f"현재 달은 {current_month}월입니다. 다음 달로 넘어갑니다.")
-        
-    print(f"현재 달력에서 달은 {current_month}입니다")
-    
-    # 8. 예약 시도
-    result = make_reservation(date, timeslot, court)
-    if result == 1:
+#  5. 예약 가능한 코트를 찾을 때까지 무한 반복
+while(True):
+    if run() :
         break
+
 
 for i in range(60, 0, -1):
     print(f'{i} 초 후 종료')
