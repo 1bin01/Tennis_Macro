@@ -7,12 +7,16 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 import datetime
 import requests
+import pyautogui
+
+clickX = 898
+clickY = 482
 
 coutList = [
         "월 내곡 1번코트(하드)",
         "월 내곡 2번코트(하드)",
         "월 내곡 3번코트(하드)",
-        "월 내곡 4번코트(하드)",
+        "월내곡 4번코트(하드)",
         "월 내곡 5번코트(하드)",
         "월 내곡 6번코트(하드)",
         "월 내곡 7번코트(인조잔디)",
@@ -107,6 +111,18 @@ def getCourtOptions():
     return courtOptions
 
 
+# Selenium WebDriver 설정
+
+def findCourt():
+    originalURL = driver.current_url
+    pyautogui.moveTo(clickX, clickY) 
+    for i in range(20):
+        pyautogui.click()
+        if driver.current_url != originalURL:
+            return 1
+        time.sleep(0.3)
+    return 0
+
 def make_reservation(day, timeslot, court):
     # 1. 날짜 선택
     xpath = f'//button[@class="calendar_date" and .//span[text()="{day}"]]'
@@ -137,33 +153,7 @@ def make_reservation(day, timeslot, court):
     ).click()
     
     # 3. 코트 선택    
-    find = 0
-    l = 0
-    r = 8
-    if court == 1:
-        r = 6
-    elif court == 2:
-        l = 6
-    
-    for t in range(30):
-        print(t)
-        try : 
-            for i in range(r - 1, l - 1, -1):
-                xpath = f'//div[@class="desc_title" and normalize-space(text())="{coutList[i]}"]/ancestor::a[@class="item_desc"]'
-                elements = driver.find_elements(By.XPATH, xpath)
-                if elements:
-                    WebDriverWait(driver, 10).until(
-                        EC.element_to_be_clickable((By.XPATH, xpath))
-                    ).click()
-                    find = 1
-                    break
-                
-                if find == 1:
-                    break
-        except Exception as e:
-            print(f"클릭 인터셉트 오류 발생: {e} - 재시도 중...")
-
-    if find == 0:
+    if findCourt() == False:
         print("만족하는 코트가 없습니다 ㅠㅠ")
         return 0
     
@@ -214,7 +204,9 @@ def run():
         print(f"현재 달력에서 달은 {current_month}입니다")
         
         # 8. 예약 시도
-        return make_reservation(date, timeslot, court)
+        if make_reservation(date, timeslot, court):
+            return 1
+    return 0
 
 def getServerTime(url):
     return datetime.datetime.strptime( requests.head(url).headers['Date'], '%a, %d %b %Y %H:%M:%S %Z')
@@ -223,7 +215,7 @@ def waitFunction(url):
     while(True):
         serverTime = getServerTime(url)
         print(serverTime)
-        if serverTime.second == 0:
+        if serverTime.second % 60 < 5:
             break
 
 '''
@@ -231,8 +223,12 @@ Todo
 1. python 설치 (3.13 기준)
 2. 컴퓨터에 selenium 설치 (터미널에서 명령어 입력 : pip install selenium)
    컴퓨터에 requests 설치 (터미널에서 명령어 입력 : pip install requests)
-3. 네이버 로그인
-4. 화면에 따라 작동이 잘 안될 수도 있으니 꼭 테스트해보기
+   컴퓨터에 pyautogui 설치 (터미널에서 명령어 입력 : pip install pyautogui)
+3. mouse_location.py를 실행해서 clickX, clickY 좌표 저장
+4. 네이버 로그인
+5. 화면에 따라 작동이 잘 안될 수도 있으니 꼭 테스트해보기
+
++) 2시간 예약인데 1시간 밖에 자리가 없는데 검색이 됨.. 문제..
 '''
 
 tmp = input('\n아무거나 입력해주세요 : ')
@@ -258,14 +254,12 @@ driver = webdriver.Chrome(options=options)
 # 4. 로그인
 driver.get("https://nid.naver.com/nidlogin.login")
 
-# 네이버 예약 페이지 열기
+# # 네이버 예약 페이지 열기
 WebDriverWait(driver, 50).until(EC.url_changes("https://nid.naver.com/nidlogin.login"))
 driver.get("https://booking.naver.com/booking/10/bizes/217811")
 
-# 5. 9시 정각까지 대기
 
-
-#  6. 00초마다 코트 예약 시도
+#  5. 00초마다 코트 예약 시도
 while(True):
     waitFunction('https://booking.naver.com/booking/10/bizes/217811')
     if run() :
